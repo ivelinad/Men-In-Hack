@@ -17,5 +17,5 @@ void main() {
 	textureColor.a=1.0f;
 	color=textureColor;*/
 	//color=vec4(1.0f,0.0f,0.0f,1.0f)*nDotVP;
-	color=vec4(0.0f,0.0f,0.0f,1.0f);
+	color=vec4(0.0f,0.0f,0.0f,0.65f);
 }

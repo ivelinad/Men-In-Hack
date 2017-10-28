@@ -63,6 +63,8 @@ bool Engine::init() {
 		return false;
 	}
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glGenVertexArrays(1,&VertexArrayID);
 	glBindVertexArray(VertexArrayID);
 	return true;
@@ -94,10 +96,6 @@ void Engine::server() {
     mat4 MVP;
 	double mousex,mousey;
 	Buffer vertex;
-	GLfloat vertexData[9]={0.0f,0.0f,0.0f,
-						   0.0f,1.0f,0.0f,
-						   1.0f,0.0f,0.0f};
-	vertex.writeData(vertexData,9);
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -115,6 +113,17 @@ void Engine::server() {
 			x=x+0.05f*cos(angle);
 			z=z+0.05f*sin(angle);
 		}
+		float reach = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f)/10.0f+0.1f;
+		if(reach<0.0f) reach=0.0f;
+		if(reach>0.2f) reach=0.2f;
+		GLfloat vertexData[18]={-0.05f,1.0f,0.0f,
+							   0.05f,1.0f,0.0f,
+							   0.05f,reach,0.0f,
+							   
+							   -0.05f,1.0f,0.0f,
+							   0.05f,reach,0.0f,
+							   -0.05f,reach,0.0f};
+		vertex.writeData(vertexData,18);
 		glfwGetCursorPos(window,&mousex,&mousey);
 		angle=(mousex/1920.0f)*2*M_PI;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
@@ -126,7 +135,7 @@ void Engine::server() {
 		map.render(program);
 		program2D.use();
 		vertex.use(0,3);
-		glDrawArrays(GL_TRIANGLES,0,3);
+		glDrawArrays(GL_TRIANGLES,0,6);
 		vertex.free(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -181,6 +190,8 @@ void Engine::serverTCP() {
 		float diffX,diffY;
 		memcpy(&diffX,buffer,size);
 		memcpy(&diffY,buffer+size,size);
+		mouseXDiff=mouseXDiff+diffX;
+		mouseYDiff=mouseYDiff+diffY;
 	}
 	closesocket(ClientSocket);
     closesocket(ListenSocket);
@@ -232,6 +243,8 @@ void Engine::client(const char* ip) {
 		glfwGetCursorPos(window,&temp_x,&temp_y);
 		mouseXDiff=mouseXDiff+(temp_x-lastX);
 		mouseYDiff=mouseYDiff+(temp_y-lastY);
+		lastX=temp_x;
+		lastY=temp_y;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		View=lookAt(vec3(x,3.5f,z),vec3(x+cos(angle)*32.0f,6.0f,z+sin(angle)*32.0f),vec3(0,1,0));
