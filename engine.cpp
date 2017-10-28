@@ -81,7 +81,7 @@ void Engine::server() {
 	}
 	bool quit=false;
 	Map map;
-	map.init("default");
+	map.init("constructionsite");
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
 	program.attachShader(Shader("fragment.shader",GL_FRAGMENT_SHADER));
@@ -113,17 +113,26 @@ void Engine::server() {
 			x=x+0.05f*cos(angle);
 			z=z+0.05f*sin(angle);
 		}
-		float reach = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f)/10.0f+0.1f;
-		if(reach<0.0f) reach=0.0f;
-		if(reach>0.2f) reach=0.2f;
-		GLfloat vertexData[18]={-0.05f,1.0f,0.0f,
+		float reach_y = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f)/10.0f+0.1f;
+		if(reach_y<0.0f) reach_y=0.0f;
+		if(reach_y>0.2f) reach_y=0.2f;
+		float neg_reach_y = reach_y-0.2f;
+		GLfloat vertexData[36]={-0.05f,1.0f,0.0f,
 							   0.05f,1.0f,0.0f,
-							   0.05f,reach,0.0f,
+							   0.05f,reach_y,0.0f,
 							   
 							   -0.05f,1.0f,0.0f,
-							   0.05f,reach,0.0f,
-							   -0.05f,reach,0.0f};
-		vertex.writeData(vertexData,18);
+							   0.05f,reach_y,0.0f,
+							   -0.05f,reach_y,0.0f,
+							   
+							   -0.05f,-1.0f,0.0f,
+							   0.05f,-1.0f,0.0f,
+							   0.05f,neg_reach_y,0.0f,
+							   
+							   -0.05f,-1.0f,0.0f,
+							   0.05f,neg_reach_y,0.0f,
+							   -0.05f,neg_reach_y,0.0f};
+		vertex.writeData(vertexData,36);
 		glfwGetCursorPos(window,&mousex,&mousey);
 		angle=(mousex/1920.0f)*2*M_PI;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
@@ -135,7 +144,7 @@ void Engine::server() {
 		map.render(program);
 		program2D.use();
 		vertex.use(0,3);
-		glDrawArrays(GL_TRIANGLES,0,6);
+		glDrawArrays(GL_TRIANGLES,0,12);
 		vertex.free(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -210,7 +219,7 @@ void Engine::client(const char* ip) {
 	}
 	bool quit=false;
 	Map map;
-	map.init("default");
+	map.init("constructionsite");
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
 	Shader fragment("fragment.shader",GL_FRAGMENT_SHADER);
