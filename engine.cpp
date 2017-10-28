@@ -92,6 +92,7 @@ void Engine::server() {
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
+	double mousex,mousey;
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -109,6 +110,8 @@ void Engine::server() {
 			x=x+0.05f*cos(angle);
 			z=z+0.05f*sin(angle);
 		}
+		glfwGetCursorPos(window,&mousex,&mousey);
+		angle=(mousex/1920.0f)*2*M_PI;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		View=lookAt(vec3(x,2.0f,z),vec3(x+cos(angle)*2.0f,0.0f,z+sin(angle)*2.0f),vec3(0,1,0));
@@ -151,21 +154,23 @@ void Engine::serverTCP() {
 		int size=sizeof(float);
 		float temp_x=x;
 		float temp_z=z;
+		float temp_angle=angle;
 		memcpy(buffer,&temp_x,size);
 		memcpy(buffer+size,&temp_z,size);
-        t=send(ClientSocket,buffer,size*2,0);
+		memcpy(buffer+2*size,&temp_angle,size);
+        t=send(ClientSocket,buffer,size*3,0);
 		if(t==SOCKET_ERROR) {
 			failure=true;
 			break;
 		}
-		t=recv(ClientSocket,buffer,size,0);
-		if(t!=size) {
+		t=recv(ClientSocket,buffer,size*2,0);
+		if(t!=size*2) {
 			failure=true;
 			break;
 		}
-		float temp;
-		memcpy(&temp,buffer,size);
-		angle=temp;
+		float diffX,diffY;
+		memcpy(&diffX,buffer,size);
+		memcpy(&diffY,buffer+size,size);
 	}
 	closesocket(ClientSocket);
     closesocket(ListenSocket);
@@ -185,7 +190,6 @@ void Engine::client(const char* ip) {
 	bool quit=false;
 	Map map;
 	map.init("default");
-	double mousex,mousey;
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
 	Shader fragment("fragment.shader",GL_FRAGMENT_SHADER);
@@ -198,6 +202,8 @@ void Engine::client(const char* ip) {
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
+	double lastX,lastY;
+	glfwGetCursorPos(window,&lastX,&lastY);
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -212,8 +218,10 @@ void Engine::client(const char* ip) {
 			quit=true;
 			break;
 		}
-		glfwGetCursorPos(window,&mousex,&mousey);
-		angle=(mousex/1920.0f)*2*M_PI;
+		double temp_x,temp_y;
+		glfwGetCursorPos(window,&temp_x,&temp_y);
+		mouseXDiff=mouseXDiff+(temp_x-lastX);
+		mouseYDiff=mouseYDiff+(temp_y-lastY);
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		View=lookAt(vec3(x,3.5f,z),vec3(x+cos(angle)*32.0f,6.0f,z+sin(angle)*32.0f),vec3(0,1,0));
@@ -264,19 +272,24 @@ void Engine::clientTCP(const char* ip) {
 	int t;
 	while(running) {
 		int size = sizeof(float);
-		t=recv(ConnectSocket,buffer,size*2,0);
-		if(t!=size*2) {
+		t=recv(ConnectSocket,buffer,size*3,0);
+		if(t!=size*3) {
 			failure=true;
 			break;
 		}
-		float temp_x,temp_z;
+		float temp_x,temp_z,temp_angle;
 		memcpy(&temp_x,buffer,size);
 		memcpy(&temp_z,buffer+size,size);
+		memcpy(&temp_angle,buffer+2*size,size);
 		x=temp_x;
 		z=temp_z;
-		float temp=angle;
-		memcpy(buffer,&temp,size);
-		t=send(ConnectSocket,buffer,size,0);
+		angle=temp_angle;
+		float temp_xdiff=mouseXDiff,temp_ydiff=mouseYDiff;
+		mouseXDiff=0;
+		mouseYDiff=0;
+		memcpy(buffer,&temp_xdiff,size);
+		memcpy(buffer+size,&temp_ydiff,size);
+		t=send(ConnectSocket,buffer,size*2,0);
 		if(t==SOCKET_ERROR) {
 			failure=true;
 			break;

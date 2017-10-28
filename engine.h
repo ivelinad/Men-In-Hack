@@ -26,6 +26,8 @@ class Engine {
 		std::atomic<bool> connected{false};
 		std::atomic<bool> failure{false};
 		std::atomic<bool> running{true};
+		std::atomic<float> mouseXDiff{0.0f};
+		std::atomic<float> mouseYDiff{0.0f};
 	public:
 		bool init();
 		void server();
