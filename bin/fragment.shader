@@ -4,6 +4,7 @@ in vec3 coords;
 in vec3 normal;
 out vec4 color;
 uniform sampler2D textureSampler;
+
 void main() {
 	vec3 normalVector=normal;
 	vec3 lightPos={0.0f,15.0f,0.0f};
