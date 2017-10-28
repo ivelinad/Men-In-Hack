@@ -1,0 +1,3 @@
+bin/*.exe
+bin/debug.txt
+obj/*.o
