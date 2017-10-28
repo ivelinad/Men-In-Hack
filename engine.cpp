@@ -96,7 +96,9 @@ void Engine::server() {
     mat4 MVP;
 	double mousex,mousey;
 	Buffer vertex;
+	double begin,end;
 	while(!quit) {
+		begin = glfwGetTime();
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
 			break;
@@ -110,8 +112,8 @@ void Engine::server() {
 			break;
 		}
 		if(glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS) {
-			x=x+0.05f*cos(angle);
-			z=z+0.05f*sin(angle);
+			x=x+0.25f*cos(angle);
+			z=z+0.25f*sin(angle);
 		}
 		float reach_y = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f)/10.0f+0.1f;
 		if(reach_y<0.0f) reach_y=0.0f;
@@ -148,6 +150,11 @@ void Engine::server() {
 		vertex.free(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		end = glfwGetTime();
+		if(end-begin<0.016f) {
+			int time = (0.016f - end + begin) * 1000;
+			Sleep(time);
+		}
 	}
 	program.destroy();
 	program2D.destroy();
@@ -234,7 +241,9 @@ void Engine::client(const char* ip) {
     mat4 MVP;
 	double lastX,lastY;
 	glfwGetCursorPos(window,&lastX,&lastY);
+	double begin,end;
 	while(!quit) {
+		begin = glfwGetTime();
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
 			break;
@@ -263,6 +272,11 @@ void Engine::client(const char* ip) {
 		map.render(program);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
+		end = glfwGetTime();
+		if(end-begin<0.016f) {
+			int time = (0.016f - end + begin) * 1000;
+			Sleep(time);
+		}
 	}
 	program.destroy();
 	running=false;
