@@ -82,17 +82,22 @@ void Engine::server() {
 	map.init("default");
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
-	Shader fragment("fragment.shader",GL_FRAGMENT_SHADER);
-	char result[1024];
-	fragment.getResult(result,NULL);
-	writeDebug(result);
-	program.attachShader(fragment);
+	program.attachShader(Shader("fragment.shader",GL_FRAGMENT_SHADER));
 	program.create();
+	Program program2D;
+	program2D.attachShader(Shader("vertex_2d.shader",GL_VERTEX_SHADER));
+	program2D.attachShader(Shader("fragment_2d.shader",GL_FRAGMENT_SHADER));
+	program2D.create();
 	mat4 Projection=perspective(45.0f,1920.0f/1080.0f,0.1f,1000.0f);
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
 	double mousex,mousey;
+	Buffer vertex;
+	GLfloat vertexData[9]={0.0f,0.0f,0.0f,
+						   0.0f,1.0f,0.0f,
+						   1.0f,0.0f,0.0f};
+	vertex.writeData(vertexData,9);
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -116,13 +121,18 @@ void Engine::server() {
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		View=lookAt(vec3(x,2.0f,z),vec3(x+cos(angle)*2.0f,0.0f,z+sin(angle)*2.0f),vec3(0,1,0));
         MVP=Projection*View*Model;
-        glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		program.use();
+		glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		map.render(program);
+		program2D.use();
+		vertex.use(0,3);
+		glDrawArrays(GL_TRIANGLES,0,3);
+		vertex.free(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 	program.destroy();
+	program2D.destroy();
 	running=false;
 	thread.join();
 }
