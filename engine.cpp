@@ -1,5 +1,7 @@
 #include "engine.h"
 
+#define M_PI   3.14159265358979323846264338327950288
+
 namespace Sockets {
     bool startup() {
         WSAData wsaData;
@@ -11,7 +13,7 @@ namespace Sockets {
         WSACleanup();
     }
 }
-bool startServer(char* port, SOCKET &ListenSocket) {
+bool startServer(const char* port, SOCKET &ListenSocket) {
     struct addrinfo *result=NULL,hints;
     ZeroMemory(&hints,sizeof(hints));
     hints.ai_family=AF_INET;
@@ -90,8 +92,6 @@ void Engine::server() {
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
-	Texture texture;
-	texture.loadPNG("texture.png");
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -105,18 +105,20 @@ void Engine::server() {
 			quit=true;
 			break;
 		}
-		glClearColor(0.0f,0.0f,0.0f,1.0f);
+		if(glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS) {
+			x=x+0.05f*cos(angle);
+			z=z+0.05f*sin(angle);
+		}
+		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		View=lookAt(vec3(x,2.0f,z),vec3(cos(angle)*32.0f,0.0f,sin(angle)*32.0f),vec3(0,1,0));
+		View=lookAt(vec3(x,2.0f,z),vec3(x+cos(angle)*2.0f,0.0f,z+sin(angle)*2.0f),vec3(0,1,0));
         MVP=Projection*View*Model;
         glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		program.use();
-		texture.use(program);
-		map.render();
+		map.render(program);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-	texture.destroy();
 	program.destroy();
 	running=false;
 	thread.join();
@@ -143,8 +145,6 @@ void Engine::serverTCP() {
 		return;
 	}
 	int t;
-	char* ip;
-	ip=inet_ntoa(client_info.sin_addr);
 	connected=true;
 	char buffer[1024];
 	while(running) {
@@ -185,6 +185,7 @@ void Engine::client(const char* ip) {
 	bool quit=false;
 	Map map;
 	map.init("default");
+	double mousex,mousey;
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
 	Shader fragment("fragment.shader",GL_FRAGMENT_SHADER);
@@ -197,8 +198,6 @@ void Engine::client(const char* ip) {
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
-	Texture texture;
-	texture.loadPNG("texture.png");
 	while(!quit) {
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -208,23 +207,23 @@ void Engine::client(const char* ip) {
 			quit=true;
 			break;
 		}
+		
 		if(!connected) {
 			quit=true;
 			break;
 		}
-		glClearColor(0.0f,0.0f,0.0f,1.0f);
+		glfwGetCursorPos(window,&mousex,&mousey);
+		angle=(mousex/1920.0f)*2*M_PI;
+		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		angle=angle+0.005f;
-		View=lookAt(vec3(x,2.0f,z),vec3(cos(angle)*32.0f,0.0f,sin(angle)*32.0f),vec3(0,1,0));
+		View=lookAt(vec3(x,3.5f,z),vec3(x+cos(angle)*32.0f,6.0f,z+sin(angle)*32.0f),vec3(0,1,0));
         MVP=Projection*View*Model;
         glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		program.use();
-		texture.use(program);
-		map.render();
+		map.render(program);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-	texture.destroy();
 	program.destroy();
 	running=false;
 	thread.join();
@@ -273,6 +272,8 @@ void Engine::clientTCP(const char* ip) {
 		float temp_x,temp_z;
 		memcpy(&temp_x,buffer,size);
 		memcpy(&temp_z,buffer+size,size);
+		x=temp_x;
+		z=temp_z;
 		float temp=angle;
 		memcpy(buffer,&temp,size);
 		t=send(ConnectSocket,buffer,size,0);

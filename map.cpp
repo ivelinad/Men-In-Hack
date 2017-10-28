@@ -38,7 +38,7 @@ bool loadOBJ(
 		}else if ( strcmp( lineHeader, "vt" ) == 0 ){
 			glm::vec2 uv;
 			fscanf(file, "%f %f\n", &uv.x, &uv.y );
-			uv.y = -uv.y; // Invert V coordinate since we will only use DDS texture, which are inverted. Remove if you want to use TGA or BMP loaders.
+			//uv.y = -uv.y; // Invert V coordinate since we will only use DDS texture, which are inverted. Remove if you want to use TGA or BMP loaders.
 			temp_uvs.push_back(uv);
 		}else if ( strcmp( lineHeader, "vn" ) == 0 ){
 			glm::vec3 normal;
@@ -125,9 +125,13 @@ void Map::init(const char* name) {
 	normal.writeData(normalData,v_normal.size()*3);
 	delete[] normalData;
 	objects = v_vertex.size();
+	strcpy(filename,name);
+	strcat(filename,".png");
+	texture.loadPNG(filename);
 }
 
-void Map::render() {
+void Map::render(Program program) {
+	texture.use(program);
 	vertex.use(0,3);
 	uv.use(1,2);
 	normal.use(2,3);
@@ -135,4 +139,8 @@ void Map::render() {
 	vertex.free(0);
 	uv.free(1);
 	normal.free(2);
+}
+
+Map::~Map() {
+	texture.destroy();
 }
