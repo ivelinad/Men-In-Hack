@@ -38,5 +38,7 @@ class Engine {
 		void client(const char* ip);
 		void clientTCP(const char* ip);
 		void destroy();
-		void writeDebug(const char* error);
+		/*void writeDebug(const char* error);
+		void writeDebug(int error);*/
+		bool intro();
 };

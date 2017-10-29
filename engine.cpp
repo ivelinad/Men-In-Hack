@@ -54,8 +54,8 @@ bool Engine::init() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
-	//window=glfwCreateWindow(1920,1080,"Project Zero",glfwGetPrimaryMonitor(),NULL);
-	window=glfwCreateWindow(1920,1080,"Project Zero",NULL,NULL);
+	window=glfwCreateWindow(1920,1080,"Project Zero",glfwGetPrimaryMonitor(),NULL);
+	//window=glfwCreateWindow(1920,1080,"Project Zero",NULL,NULL);
 	if(!window) {
 		glfwTerminate();
 		return false;
@@ -89,6 +89,11 @@ void Engine::server() {
 		thread.join();
 		return;
 	}
+	if(!intro()) {
+		running=false;
+		thread.join();
+		return;
+	}
 	bool quit=false;
 	Map map;
 	map.init(mapName);
@@ -119,8 +124,9 @@ void Engine::server() {
 	double begin,end;
 	glfwSetCursorPos(window,960,540);
 	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_HIDDEN);
+	int points=0;
+	double beginLevelTime=glfwGetTime();
 	while(!quit) {
-		float temp_x=x,temp_z=z;
 		begin = glfwGetTime();
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -136,6 +142,7 @@ void Engine::server() {
 		}
 		if(mapChange) {
 			map.init(mapName);
+			beginLevelTime=glfwGetTime();
 			if(strcmp(mapName,"constructionsite")==0)
 				tray.init("bricks");
 			else if(strcmp(mapName,"default")==0)
@@ -145,8 +152,8 @@ void Engine::server() {
 			x=0.0f;
 			z=0.0f;
 			if(strcmp(mapName,"room")==0) {
-				x=-2.0f;
-				z=0.0f;
+				x=-18.0f;
+				z=-19.0f;
 			}
 			angle=0.0f;
 			mouseXDiff=0.0f;
@@ -157,23 +164,12 @@ void Engine::server() {
 			x=x+0.25f*cos(angle);
 			z=z+0.25f*sin(angle);
 		}
-		if(glfwGetKey(window,GLFW_KEY_U)==GLFW_PRESS) {
-			strcpy(mapName,"default");
-			mapChange=true;
-		}
-		if(glfwGetKey(window,GLFW_KEY_I)==GLFW_PRESS) {
-			strcpy(mapName,"constructionsite");
-			mapChange=true;
-		}
-		if(glfwGetKey(window,GLFW_KEY_O)==GLFW_PRESS) {
-			strcpy(mapName,"room");
-			mapChange=true;
-		}
-		if(glfwGetKey(window,GLFW_KEY_G)==GLFW_PRESS) {
+		float temp_x=x,temp_z=z;
+		/*if(glfwGetKey(window,GLFW_KEY_G)==GLFW_PRESS) {
 			FILE* f=fopen("debug2.txt","a");
 			fprintf(f,"%f %f\n",temp_x,temp_z);
 			fclose(f);
-		}
+		}*/
 		if(strcmp(mapName,"default")==0 && distance(temp_x,temp_z,-15.0f,7.0f)<4.0f) {
 			strcpy(mapName,"constructionsite");
 			mapChange=true;
@@ -186,7 +182,30 @@ void Engine::server() {
 			strcpy(mapName,"default");
 			mapChange=true;
 		}
-		else if(strcmp(mapName,"default") && (mouseXDiff<-300 || mouseXDiff>300 || mouseYDiff<-300 || mouseYDiff>300)) {
+		else if(strcmp(mapName,"constructionsite")==0 && distance(temp_x,temp_z,-60.0f,-9.0f)<4.0f) {
+			strcpy(mapName,"default");
+			float diff = glfwGetTime()-beginLevelTime;
+			int award = (int)(60.0f-diff);
+			if(award>30) award=30;
+			if(award<0) award=0;
+			points+=award;
+			//writeDebug(award);
+			mapChange=true;
+		}
+		else if(strcmp(mapName,"room")==0 && distance(temp_x,temp_z,-19.0f,10.0f)<4.0f) {
+			strcpy(mapName,"default");
+			float diff = glfwGetTime()-beginLevelTime;
+			int award = (int)(40.0f-diff);
+			if(award>20) award=20;
+			if(award<0) award=0;
+			points+=award;
+			//writeDebug(award);
+			mapChange=true;
+		}
+		else if(points>=50 && strcmp(mapName,"default")==0 && distance(temp_x,temp_z,17.0f,-16.0f)<4.0f) {
+			quit=true;
+		}
+		else if(strcmp(mapName,"default")!=0 && (mouseXDiff<-300 || mouseXDiff>300 || mouseYDiff<-300 || mouseYDiff>300)) {
 			strcpy(mapName,"default");
 			mapChange=true;
 		}
@@ -304,6 +323,11 @@ void Engine::client(const char* ip) {
 		Sleep(10);
 	}
 	if(failure) {
+		thread.join();
+		return;
+	}
+	if(!intro()) {
+		running=false;
 		thread.join();
 		return;
 	}
@@ -452,8 +476,80 @@ void Engine::destroy() {
 	glfwTerminate();
 }
 
-void Engine::writeDebug(const char* error) {
+/*void Engine::writeDebug(const char* error) {
 	FILE* f=fopen("debug.txt","w");
 	fprintf(f,"%s\n",error);
 	fclose(f);
+}
+
+void Engine::writeDebug(int error) {
+	FILE* f=fopen("debug.txt","w");
+	fprintf(f,"%d\n",error);
+	fclose(f);
+}*/
+
+bool Engine::intro() {
+	Buffer vertex,uv;
+	GLfloat vertexData[18]={
+		-1.0f,1.0f,0.0f,
+		1.0f,1.0f,0.0f,
+		1.0f,-1.0f,0.0f,
+		
+		-1.0f,1.0f,0.0f,
+		1.0f,-1.0f,0.0f,
+		-1.0f,-1.0f,0.0f
+	};
+	GLfloat uvData[12]={
+		0.0f,0.0f,
+		1.0f,0.0f,
+		1.0f,1.0f,
+		
+		0.0f,0.0f,
+		1.0f,1.0f,
+		0.0f,1.0f
+	};
+	vertex.writeData(vertexData,18);
+	uv.writeData(uvData,12);
+	Texture screens[7];
+	char filename[6];
+	strcpy(filename,"*.png");
+	for(int i='1';i<='7';i++) {
+		filename[0]=i;
+		screens[i-'1'].loadPNG(filename);
+	}
+	Program program;
+	program.attachShader(Shader("vertex_2dt.shader",GL_VERTEX_SHADER));
+	program.attachShader(Shader("fragment_2dt.shader",GL_FRAGMENT_SHADER));
+	program.create();
+	int image=0;
+	double startTime=glfwGetTime();
+	PlaySound("intro.wav",NULL,SND_FILENAME|SND_ASYNC);
+	while(1) {
+		if(glfwWindowShouldClose(window)) {
+			return false;
+		}
+		double currTime=glfwGetTime();
+		double diff=currTime-startTime;
+		if(diff>=4.0f) {
+			image++;
+			if(image==7) {
+				break;
+			}
+			startTime=currTime;
+		}
+		glClearColor(1.0f,1.0f,1.0f,1.0f);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		program.use();
+		screens[image].use(program);
+		vertex.use(0,3);
+		uv.use(1,2);
+		glDrawArrays(GL_TRIANGLES,0,6);
+		vertex.free(0);
+		uv.free(1);
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+		Sleep(16);
+	}
+	PlaySound(NULL,NULL,SND_PURGE);
+	return true;
 }

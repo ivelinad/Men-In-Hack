@@ -11,6 +11,6 @@ void main() {
 	coords=vertexPosition_modelspace;
 	UV=vertexUV;
 	normal=vertexNormal;*/
-	gl_Position=vertexPosition_modelspace;
+	gl_Position=vec4(vertexPosition_modelspace,1);
 	UV=vertexUV;
 }
