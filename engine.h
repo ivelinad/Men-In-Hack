@@ -9,6 +9,7 @@
 #include<ws2tcpip.h>
 #include<windows.h>
 #include<stdlib.h>
+#include<time.h>
 #include<atomic>
 #include<thread>
 #include "map.h"
@@ -28,6 +29,8 @@ class Engine {
 		std::atomic<bool> running{true};
 		std::atomic<float> mouseXDiff{0.0f};
 		std::atomic<float> mouseYDiff{0.0f};
+		std::atomic<bool> mapChange{false};
+		char mapName[32];
 	public:
 		bool init();
 		void server();

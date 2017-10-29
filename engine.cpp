@@ -42,6 +42,10 @@ bool startServer(const char* port, SOCKET &ListenSocket) {
     return true;
 }
 
+float distance(float x1, float z1, float x2, float z2) {
+	return sqrt((x1-x2)*(x1-x2)+(z1-z2)*(z1-z2));
+}
+
 bool Engine::init() {
 	if(!glfwInit()) {
 		return false;
@@ -67,6 +71,8 @@ bool Engine::init() {
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glGenVertexArrays(1,&VertexArrayID);
 	glBindVertexArray(VertexArrayID);
+	strcpy(mapName,"default");
+	srand(time(0));
 	return true;
 }
 
@@ -81,7 +87,9 @@ void Engine::server() {
 	}
 	bool quit=false;
 	Map map;
-	map.init("constructionsite");
+	map.init(mapName);
+	Map tray;
+	tray.init("");
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
 	program.attachShader(Shader("fragment.shader",GL_FRAGMENT_SHADER));
@@ -90,14 +98,26 @@ void Engine::server() {
 	program2D.attachShader(Shader("vertex_2d.shader",GL_VERTEX_SHADER));
 	program2D.attachShader(Shader("fragment_2d.shader",GL_FRAGMENT_SHADER));
 	program2D.create();
+	Program program2;
+	program2.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
+	program2.attachShader(Shader("fragment.shader",GL_FRAGMENT_SHADER));
+	program2.create();
 	mat4 Projection=perspective(45.0f,1920.0f/1080.0f,0.1f,1000.0f);
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
+	mat4 TrayProjection=perspective(45.0f,1920.0f/1080.0f,0.1f,1000.0f);
+	mat4 TrayModel=mat4(1.0f);
+	mat4 TrayView;
+	mat4 TrayMVP;
 	double mousex,mousey;
 	Buffer vertex;
 	double begin,end;
+	glfwSetCursorPos(window,960,540);
+	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_HIDDEN);
+	FILE* f=fopen("debug3.txt","w");
 	while(!quit) {
+		float temp_x=x,temp_z=z;
 		begin = glfwGetTime();
 		if(glfwWindowShouldClose(window)) {
 			quit=true;
@@ -111,42 +131,84 @@ void Engine::server() {
 			quit=true;
 			break;
 		}
+		if(mapChange) {
+			map.init(mapName);
+			if(strcmp(mapName,"constructionsite")==0)
+				tray.init("bricks");
+			else if(strcmp(mapName,"default")==0)
+				tray.init("");
+			else
+				tray.init("tray");
+			x=0.0f;
+			z=0.0f;
+			angle=0.0f;
+			mouseXDiff=0.0f;
+			mouseYDiff=0.0f;
+			mapChange=false;
+		}
 		if(glfwGetKey(window,GLFW_KEY_W)==GLFW_PRESS) {
 			x=x+0.25f*cos(angle);
 			z=z+0.25f*sin(angle);
 		}
-		float reach_y = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f)/10.0f+0.1f;
-		if(reach_y<0.0f) reach_y=0.0f;
-		if(reach_y>0.2f) reach_y=0.2f;
-		float neg_reach_y = reach_y-0.2f;
-		GLfloat vertexData[36]={-0.05f,1.0f,0.0f,
-							   0.05f,1.0f,0.0f,
-							   0.05f,reach_y,0.0f,
-							   
-							   -0.05f,1.0f,0.0f,
-							   0.05f,reach_y,0.0f,
-							   -0.05f,reach_y,0.0f,
-							   
-							   -0.05f,-1.0f,0.0f,
-							   0.05f,-1.0f,0.0f,
-							   0.05f,neg_reach_y,0.0f,
-							   
-							   -0.05f,-1.0f,0.0f,
-							   0.05f,neg_reach_y,0.0f,
-							   -0.05f,neg_reach_y,0.0f};
-		vertex.writeData(vertexData,36);
+		if(glfwGetKey(window,GLFW_KEY_U)==GLFW_PRESS) {
+			strcpy(mapName,"default");
+			mapChange=true;
+		}
+		if(glfwGetKey(window,GLFW_KEY_I)==GLFW_PRESS) {
+			strcpy(mapName,"constructionsite");
+			mapChange=true;
+		}
+		if(glfwGetKey(window,GLFW_KEY_O)==GLFW_PRESS) {
+			strcpy(mapName,"room");
+			mapChange=true;
+		}
+		if(glfwGetKey(window,GLFW_KEY_G)==GLFW_PRESS) {
+			FILE* f=fopen("debug2.txt","a");
+			fprintf(f,"%f %f\n",temp_x,temp_z);
+			fclose(f);
+		}
+		if(strcmp(mapName,"default")==0 && distance(temp_x,temp_z,-15.0f,7.0f)<4.0f) {
+			strcpy(mapName,"constructionsite");
+			fprintf(f,"CHANGE O\'MAP\n");
+			mapChange=true;
+		}
+		else if(strcmp(mapName,"default") && (mouseXDiff<-300 || mouseXDiff>300 || mouseYDiff<-300 || mouseYDiff>300)) {
+			strcpy(mapName,"default");
+			mapChange=true;
+		}
+		float temp_xdiff=mouseXDiff,temp_ydiff=mouseYDiff;
+		fprintf(f,"%f %f\n",temp_xdiff,temp_ydiff);
+		float reach_x = ((mouseXDiff)*2.0f/1920.0f-1.0f);
+		float reach_y = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f);
+		float point_x = ((1920.0f/2.0f+reach_x*64.0f)/1920.0f*2.0f)-1.0f;
+		float point_y = ((1080.0f/2.0f+reach_y*36.0f)/1080.0f*2.0f)-1.0f;
+		GLfloat vertexData[18]={point_x-0.05f,point_y-0.05f,0.0f,
+								point_x-0.05f,point_y+0.05f,0.0f,
+								point_x+0.05f,point_y+0.05f,0.0f,
+								
+								point_x-0.05f,point_y-0.05f,0.0f,
+								point_x+0.05f,point_y+0.05f,0.0f,
+								point_x+0.05f,point_y-0.05f,0.0f};
+		vertex.writeData(vertexData,18);
 		glfwGetCursorPos(window,&mousex,&mousey);
-		angle=(mousex/1920.0f)*2*M_PI;
+		glfwSetCursorPos(window,960,540);
+		angle=angle+((mousex-960)/1920.0f)*2*M_PI;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		program.use();
 		View=lookAt(vec3(x,2.0f,z),vec3(x+cos(angle)*2.0f,0.0f,z+sin(angle)*2.0f),vec3(0,1,0));
         MVP=Projection*View*Model;
-		program.use();
 		glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		map.render(program);
+		program2.use();
+		TrayView=lookAt(vec3(1.5f,1.5f,0.0f),vec3(0.0f,0.0f,0.0f),vec3(0,1,0));
+		TrayModel=rotate((reach_x+1.0f)*30.0f*2.0f*(float)(M_PI)/180.0f,vec3(1,0,0))*rotate((reach_y-1.0f)*30.0f*2.0f*(float)(M_PI)/180.0f,vec3(0,0,1));
+		TrayMVP=TrayProjection*TrayView*TrayModel;
+		glUniformMatrix4fv(program2.getUniformLocation("MVP"),1,GL_FALSE,&TrayMVP[0][0]);
+		tray.render(program2);
 		program2D.use();
 		vertex.use(0,3);
-		glDrawArrays(GL_TRIANGLES,0,12);
+		glDrawArrays(GL_TRIANGLES,0,6);
 		vertex.free(0);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -156,6 +218,7 @@ void Engine::server() {
 			Sleep(time);
 		}
 	}
+	fclose(f);
 	program.destroy();
 	program2D.destroy();
 	running=false;
@@ -193,7 +256,8 @@ void Engine::serverTCP() {
 		memcpy(buffer,&temp_x,size);
 		memcpy(buffer+size,&temp_z,size);
 		memcpy(buffer+2*size,&temp_angle,size);
-        t=send(ClientSocket,buffer,size*3,0);
+		memcpy(buffer+3*size,mapName,32);
+        t=send(ClientSocket,buffer,size*3+32,0);
 		if(t==SOCKET_ERROR) {
 			failure=true;
 			break;
@@ -207,7 +271,11 @@ void Engine::serverTCP() {
 		memcpy(&diffX,buffer,size);
 		memcpy(&diffY,buffer+size,size);
 		mouseXDiff=mouseXDiff+diffX;
+		if(mouseXDiff<-960) mouseXDiff=-960;
+		if(mouseXDiff>960) mouseXDiff=960;
 		mouseYDiff=mouseYDiff+diffY;
+		if(mouseYDiff<-540) mouseYDiff=-540;
+		if(mouseYDiff>540) mouseYDiff=540;
 	}
 	closesocket(ClientSocket);
     closesocket(ListenSocket);
@@ -226,22 +294,18 @@ void Engine::client(const char* ip) {
 	}
 	bool quit=false;
 	Map map;
-	map.init("constructionsite");
+	map.init(mapName);
 	Program program;
 	program.attachShader(Shader("vertex.shader",GL_VERTEX_SHADER));
-	Shader fragment("fragment.shader",GL_FRAGMENT_SHADER);
-	char result[1024];
-	fragment.getResult(result,NULL);
-	writeDebug(result);
-	program.attachShader(fragment);
+	program.attachShader(Shader("fragment.shader",GL_FRAGMENT_SHADER));
 	program.create();
 	mat4 Projection=perspective(45.0f,1920.0f/1080.0f,0.1f,1000.0f);
     mat4 Model=mat4(1.0f);
     mat4 View;
     mat4 MVP;
-	double lastX,lastY;
-	glfwGetCursorPos(window,&lastX,&lastY);
+	glfwSetCursorPos(window,960,540);
 	double begin,end;
+	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_HIDDEN);
 	while(!quit) {
 		begin = glfwGetTime();
 		if(glfwWindowShouldClose(window)) {
@@ -257,18 +321,35 @@ void Engine::client(const char* ip) {
 			quit=true;
 			break;
 		}
+		if(mapChange) {
+			map.init(mapName);
+			mouseXDiff=0;
+			mouseYDiff=0;
+			mapChange=false;
+		}
 		double temp_x,temp_y;
 		glfwGetCursorPos(window,&temp_x,&temp_y);
-		mouseXDiff=mouseXDiff+(temp_x-lastX);
-		mouseYDiff=mouseYDiff+(temp_y-lastY);
-		lastX=temp_x;
-		lastY=temp_y;
+		glfwSetCursorPos(window,960,540);
+		mouseXDiff=mouseXDiff+(960-temp_x);
+		mouseYDiff=mouseYDiff+(temp_y-540);
+		int disturbance_x = rand()%32;
+		float fdist_x = disturbance_x/1.0f-16.0f;
+		//fdist_x+=(mouseXDiff/1920.0f)*(mouseXDiff/1920.0f)*0.1f;
+		int disturbance_y = rand()%32;
+		float fdist_y = disturbance_y/1.0f-16.0f;
+		//fdist_y+=(mouseYDiff/1080.0f)*(mouseYDiff/1080.0f)*0.1f;
+		mouseXDiff=mouseXDiff+fdist_x;
+		if(mouseXDiff<-960) mouseXDiff=-960;
+		if(mouseXDiff>960) mouseXDiff=960;
+		if(mouseYDiff<-540) mouseYDiff=-540;
+		if(mouseYDiff>540) mouseYDiff=540;
+		mouseYDiff=mouseYDiff+fdist_y;
 		glClearColor(0.52f,0.80f,0.97f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		View=lookAt(vec3(x,3.5f,z),vec3(x+cos(angle)*32.0f,6.0f,z+sin(angle)*32.0f),vec3(0,1,0));
         MVP=Projection*View*Model;
-        glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		program.use();
+        glUniformMatrix4fv(program.getUniformLocation("MVP"),1,GL_FALSE,&MVP[0][0]);
 		map.render(program);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -318,18 +399,24 @@ void Engine::clientTCP(const char* ip) {
 	int t;
 	while(running) {
 		int size = sizeof(float);
-		t=recv(ConnectSocket,buffer,size*3,0);
-		if(t!=size*3) {
+		t=recv(ConnectSocket,buffer,size*3+32,0);
+		if(t!=size*3+32) {
 			failure=true;
 			break;
 		}
 		float temp_x,temp_z,temp_angle;
+		char tempName[32];
 		memcpy(&temp_x,buffer,size);
 		memcpy(&temp_z,buffer+size,size);
 		memcpy(&temp_angle,buffer+2*size,size);
+		memcpy(tempName,buffer+3*size,32);
 		x=temp_x;
 		z=temp_z;
 		angle=temp_angle;
+		if(strcmp(tempName,mapName)) {
+			strcpy(mapName,tempName);
+			mapChange=true;
+		}
 		float temp_xdiff=mouseXDiff,temp_ydiff=mouseYDiff;
 		mouseXDiff=0;
 		mouseYDiff=0;
