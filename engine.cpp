@@ -79,6 +79,10 @@ bool Engine::init() {
 void Engine::server() {
 	std::thread thread(&Engine::serverTCP,this);
 	while(!connected && !failure) {
+		glfwPollEvents();
+		if(glfwWindowShouldClose(window)) {
+			failure=true;
+		}
 		Sleep(10);
 	}
 	if(failure) {
@@ -115,7 +119,6 @@ void Engine::server() {
 	double begin,end;
 	glfwSetCursorPos(window,960,540);
 	glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_HIDDEN);
-	FILE* f=fopen("debug3.txt","w");
 	while(!quit) {
 		float temp_x=x,temp_z=z;
 		begin = glfwGetTime();
@@ -141,6 +144,10 @@ void Engine::server() {
 				tray.init("tray");
 			x=0.0f;
 			z=0.0f;
+			if(strcmp(mapName,"room")==0) {
+				x=-2.0f;
+				z=0.0f;
+			}
 			angle=0.0f;
 			mouseXDiff=0.0f;
 			mouseYDiff=0.0f;
@@ -169,15 +176,20 @@ void Engine::server() {
 		}
 		if(strcmp(mapName,"default")==0 && distance(temp_x,temp_z,-15.0f,7.0f)<4.0f) {
 			strcpy(mapName,"constructionsite");
-			fprintf(f,"CHANGE O\'MAP\n");
+			mapChange=true;
+		}
+		else if(strcmp(mapName,"default")==0 && distance(temp_x,temp_z,23.0f,18.0f)<4.0f) {
+			strcpy(mapName,"room");
+			mapChange=true;
+		}
+		else if(strcmp(mapName,"constructionsite")==0 && distance(temp_x,temp_z,20.0f,20.0f)<4.0f) {
+			strcpy(mapName,"default");
 			mapChange=true;
 		}
 		else if(strcmp(mapName,"default") && (mouseXDiff<-300 || mouseXDiff>300 || mouseYDiff<-300 || mouseYDiff>300)) {
 			strcpy(mapName,"default");
 			mapChange=true;
 		}
-		float temp_xdiff=mouseXDiff,temp_ydiff=mouseYDiff;
-		fprintf(f,"%f %f\n",temp_xdiff,temp_ydiff);
 		float reach_x = ((mouseXDiff)*2.0f/1920.0f-1.0f);
 		float reach_y = ((1080-mouseYDiff)*2.0f/1080.0f-1.0f);
 		float point_x = ((1920.0f/2.0f+reach_x*64.0f)/1920.0f*2.0f)-1.0f;
@@ -218,7 +230,6 @@ void Engine::server() {
 			Sleep(time);
 		}
 	}
-	fclose(f);
 	program.destroy();
 	program2D.destroy();
 	running=false;
@@ -286,6 +297,10 @@ void Engine::serverTCP() {
 void Engine::client(const char* ip) {
 	std::thread thread(&Engine::clientTCP,this,ip);
 	while(!connected && !failure) {
+		glfwPollEvents();
+		if(glfwWindowShouldClose(window)) {
+			failure=true;
+		}
 		Sleep(10);
 	}
 	if(failure) {
@@ -334,10 +349,8 @@ void Engine::client(const char* ip) {
 		mouseYDiff=mouseYDiff+(temp_y-540);
 		int disturbance_x = rand()%32;
 		float fdist_x = disturbance_x/1.0f-16.0f;
-		//fdist_x+=(mouseXDiff/1920.0f)*(mouseXDiff/1920.0f)*0.1f;
 		int disturbance_y = rand()%32;
 		float fdist_y = disturbance_y/1.0f-16.0f;
-		//fdist_y+=(mouseYDiff/1080.0f)*(mouseYDiff/1080.0f)*0.1f;
 		mouseXDiff=mouseXDiff+fdist_x;
 		if(mouseXDiff<-960) mouseXDiff=-960;
 		if(mouseXDiff>960) mouseXDiff=960;
